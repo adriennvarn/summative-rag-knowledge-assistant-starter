@@ -15,7 +15,7 @@ def get_chroma_client():
     - Use Config.CHROMA_PATH as the local storage path.
     - Return a chromadb.PersistentClient.
     """
-    raise NotImplementedError("TODO: Create and return a persistent Chroma client.")
+    return chromadb.PersistentClient(path=Config.CHROMA_PATH)
 
 
 def get_or_create_collection():
@@ -27,7 +27,9 @@ def get_or_create_collection():
     - Use Config.COLLECTION_NAME as the collection name.
     - Return the collection.
     """
-    raise NotImplementedError("TODO: Get or create the Chroma collection.")
+    return get_chroma_client().get_or_create_collection(
+        name=Config.COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
+    )
 
 
 def get_embedding(text: str) -> list[float]:
@@ -41,7 +43,7 @@ def get_embedding(text: str) -> list[float]:
     - Return the embedding list from the response.
 
     Endpoint:
-        POST {OLLAMA_BASE_URL}/api/embed
+        POST {OLLAMA_BASE_URL}/api/embeddings
 
     Example request body:
         {
@@ -49,7 +51,11 @@ def get_embedding(text: str) -> list[float]:
             "prompt": text
         }
     """
-    raise NotImplementedError("TODO: Create embeddings with the configured embedding model.")
+    response = requests.post(f"{Config.OLLAMA_BASE_URL}/api/embeddings", {
+        "model": Config.EMBEDDING_MODEL,
+        "prompt": text
+    })
+    return response["embedding"]
 
 
 def seed_vector_store(chunks: List[DocumentChunk]) -> int:
@@ -68,10 +74,32 @@ def seed_vector_store(chunks: List[DocumentChunk]) -> int:
 
     Keep source metadata because the frontend needs to display sources.
     """
-    raise NotImplementedError("TODO: Seed Chroma with document chunks and metadata.")
+    collection = get_or_create_collection()
+    ids = [document.id for document in chunks]
+    documents = [
+        f"{document.title}. {document.text}" for document in chunks
+    ]
+    metadatas = [
+        {
+            "title": document.title,
+            "source": document.source,
+            "chunk_index": document.chunk_index
+        }
+        for document in chunks
+    ]
+    embeddings = [get_embedding(document_text) for document_text in documents]
+    collection.add(
+        ids=ids,
+        documents=documents,
+        metadatas=metadatas,
+        embeddings=embeddings,
+    )
+    return collection.count()
 
 
-def retrieve_relevant_chunks(question: str, top_k: int | None = None) -> list[dict[str, Any]]:
+def retrieve_relevant_chunks(
+    question: str, top_k: int | None = None
+) -> list[dict[str, Any]]:
     """
     Retrieve relevant chunks for a user question.
 
@@ -96,4 +124,34 @@ def retrieve_relevant_chunks(question: str, top_k: int | None = None) -> list[di
             }
         ]
     """
-    raise NotImplementedError("TODO: Retrieve relevant chunks for the user question.")
+    collection = get_or_create_collection()
+
+    if collection.count() == 0:
+        return []
+
+    query_embedding = get_embedding(question)
+    raw_results = collection.query(query_embeddings=[query_embedding], n_results=top_k)
+
+    ids = raw_results.get("ids") or [[]]
+    documents = raw_results.get("documents") or [[]]
+    metadatas = raw_results.get("metadatas") or [[]]
+    distances = raw_results.get("distances") or [[]]
+
+    results = []
+
+    for index, document_id in enumerate(ids[0]):
+        metadata = metadatas[0][index] or {}
+        distance = float(distances[0][index])
+        score = 1 - distance
+        results.append(
+            {
+                "id": document_id,
+                "title": metadata.get("title", "Untitled source"),
+                "source": metadata.get("source", "No source"),
+                "text": documents[0][index],
+                "chunk_index": metadata.get("chunk_index", "No chunk index"),
+                "score": score,
+            }
+        )
+    
+    return results
