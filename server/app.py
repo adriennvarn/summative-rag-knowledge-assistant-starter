@@ -50,15 +50,8 @@ def ask_question():
     # result = answer_question(question)
     # return jsonify(result), 200
 
-    return jsonify(
-        {
-            "error": (
-                "The /api/ask route is connected, but the RAG workflow is not implemented yet. "
-                "Complete the TODO in server/app.py."
-            ),
-            "sources": [],
-        }
-    ), 501
+    result = answer_question(question)
+    return result, 200
 
 
 if __name__ == "__main__":
