@@ -43,7 +43,7 @@ def get_embedding(text: str) -> list[float]:
     - Return the embedding list from the response.
 
     Endpoint:
-        POST {OLLAMA_BASE_URL}/api/embed
+        POST {OLLAMA_BASE_URL}/api/embeddings
 
     Example request body:
         {
@@ -51,9 +51,11 @@ def get_embedding(text: str) -> list[float]:
             "prompt": text
         }
     """
-    raise NotImplementedError(
-        "TODO: Create embeddings with the configured embedding model."
-    )
+    response = requests.post(f"{Config.OLLAMA_BASE_URL}/api/embeddings", {
+        "model": Config.EMBEDDING_MODEL,
+        "prompt": text
+    })
+    return response["embedding"]
 
 
 def seed_vector_store(chunks: List[DocumentChunk]) -> int:
