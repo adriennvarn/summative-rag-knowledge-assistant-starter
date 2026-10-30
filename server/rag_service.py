@@ -49,9 +49,7 @@ def build_prompt(question: str, chunks: list[dict[str, Any]]) -> str:
         source = chunk.get("source", "unknown")
         text = chunk.get("text", "")
 
-        context_blocks.append(
-            f"[Source {index}: {title} | {source}]\n{text}"
-        )
+        context_blocks.append(f"[Source {index}: {title} | {source}]\n{text}")
 
     context = "\n\n".join(context_blocks)
 
@@ -99,7 +97,16 @@ def call_generation_model(prompt: str) -> str:
             }
         }
     """
-    raise NotImplementedError("TODO: Call the configured generation model.")
+    response = requests.post(f"{Config.OLLAMA_BASE_URL}/api/generate", {
+        "model": Config.GENERATION_MODEL,
+        "prompt": prompt,
+        "stream": False,
+        "options": {
+            "temperature": Config.TEMPERATURE
+        }
+    })
+    
+    return response["response"]
 
 
 def format_sources(chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
