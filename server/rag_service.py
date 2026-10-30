@@ -97,7 +97,7 @@ def call_generation_model(prompt: str) -> str:
             }
         }
     """
-    response = requests.post(f"{Config.OLLAMA_BASE_URL}/api/generate", {
+    response = requests.post(f"{Config.OLLAMA_BASE_URL}/api/generate", json={
         "model": Config.GENERATION_MODEL,
         "prompt": prompt,
         "stream": False,
@@ -106,7 +106,7 @@ def call_generation_model(prompt: str) -> str:
         }
     })
     
-    return response["response"]
+    return response.json()["response"]
 
 
 def format_sources(chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:

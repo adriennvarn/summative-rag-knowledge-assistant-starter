@@ -51,11 +51,12 @@ def get_embedding(text: str) -> list[float]:
             "prompt": text
         }
     """
-    response = requests.post(f"{Config.OLLAMA_BASE_URL}/api/embeddings", {
+    response = requests.post(f"{Config.OLLAMA_BASE_URL}/api/embeddings", json={
         "model": Config.EMBEDDING_MODEL,
         "prompt": text
     })
-    return response["embedding"]
+
+    return response.json()["embedding"]
 
 
 def seed_vector_store(chunks: List[DocumentChunk]) -> int:
